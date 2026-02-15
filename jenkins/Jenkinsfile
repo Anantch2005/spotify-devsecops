@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "anant2005ch/spotify-clone"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+        GIT_REPO   = "https://github.com/Anantch2005/spotify-devsecops.git"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main',
+                    url: "${GIT_REPO}"
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -f docker/Dockerfile .
+                """
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh """
+                trivy image --severity HIGH,CRITICAL --exit-code 0 ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Push Image to DockerHub') {
+            steps {
+                withDockerRegistry(credentialsId: 'dockerhub-creds', url: '') {
+                    sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Update Kubernetes Manifest') {
+            steps {
+                sh """
+                sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' k8s/deployment.yaml
+                """
+            }
+        }
+
+        stage('Commit & Push Manifest') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_PASS'
+                )]) {
+                    sh """
+                    git config user.email "jenkins@devsecops.com"
+                    git config user.name "jenkins"
+
+                    git add k8s/deployment.yaml
+                    git commit -m "Deploy image ${IMAGE_TAG}" || echo "No changes to commit"
+                    git push https://${GIT_USER}:${GIT_PASS}@github.com/Anantch2005/spotify-devsecops.git main
+                    """
+                }
+            }
+        }
+    }
+}
