@@ -1,6 +1,39 @@
+# Ignore Git
 .git
-node_modules
-README.md
-k8s
-jenkins
-terraform
+.gitignore
+
+# Ignore Jenkins & CI files
+jenkins/
+Jenkinsfile
+
+# Ignore Terraform & Infra
+terraform/
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Ignore Kubernetes & ArgoCD
+k8s/
+argocd/
+
+# Ignore Monitoring
+monitoring/
+
+# Ignore Security configs
+security/
+
+# Ignore Docs
+docs/
+
+# Node modules (if added later)
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Ignore everything except app & docker
+*
+!app/
+!docker/
+!docker/Dockerfile
